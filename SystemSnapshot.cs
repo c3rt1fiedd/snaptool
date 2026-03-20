@@ -168,7 +168,7 @@ static void PrintHelp()
     Console.WriteLine("\nStorage: ~/.local/share/snapshotter/history.jsonl\n");
 }
 
-// --- 3. TYPE DECLARATIONS (Must come last) ---
+// --- TYPE DECLARATIONS (Must come last) ---
 public class SystemSnapshot
 {
     public DateTime Timestamp { get; set; } = DateTime.UtcNow; // guess what this possibly could mean
