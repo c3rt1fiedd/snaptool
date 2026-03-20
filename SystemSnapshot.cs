@@ -45,6 +45,10 @@ try
             Console.WriteLine("\u001b[32m[✓]\u001b[0m History cleared successfully!");
         }
     }
+    else if (args[0] == "-h" || args[0] == "--help" || args[0] == "help")
+    {
+        PrintHelp();
+    }
     else 
     {
         Console.WriteLine("Usage: snapshotter [save|diff]");
@@ -149,6 +153,19 @@ static long GetMeminfoValue(string key) {
     // Line looks like: "MemAvailable:    15931204 kB"
     var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
     return long.Parse(parts[1]) / 1024; // Convert KB to MB
+}
+
+// What --help actually prints
+static void PrintHelp()
+{
+    Console.WriteLine("\n\u001b[1mSnaptool - A Minimal System Delta Tracker\u001b[0m");
+    Console.WriteLine("Usage: snapshotter [command]");
+    Console.WriteLine("\nCommands:");
+    Console.WriteLine("  save    - Capture current CPU temp, load and memory usage.");
+    Console.WriteLine("  diff    - Compare the last two snapshots and show changes.");
+    Console.WriteLine("  help    - Show this help message.");
+    Console.WriteLine("  clear   - Clear all saved snapshots.");
+    Console.WriteLine("\nStorage: ~/.local/share/snapshotter/history.jsonl\n");
 }
 
 // --- 3. TYPE DECLARATIONS (Must come last) ---
