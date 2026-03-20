@@ -1,2 +1,2 @@
 # snaptool
- A simple system monitor for Linux (C#=
+ A simple system monitor for Linux written in C#
