@@ -4,11 +4,12 @@
 using System.Diagnostics;
 using System.Text.Json;
 
-// 1. Declare these at the VERY TOP so every block can see them
+// Declare these at the VERY TOP so every block can see them
+// That is crucial.
 string dataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "snapshotter");
 string filePath = Path.Combine(dataDir, "history.jsonl");
 
-// 2. Handle the arguments
+// Handle the arguments
 try 
 {
     if (args.Length == 0 || args[0] == "save")
@@ -54,7 +55,7 @@ catch (Exception ex)
     Console.WriteLine($"Error: {ex.Message}");
 }
 
-// --- 2. HELPER METHODS ---
+// --- HELPER METHODS ---
 static double GetCpuUsage() {
     // Read the file, split by space, take the first number (1-min load avg)
     string content = File.ReadAllText("/proc/loadavg");
@@ -87,13 +88,16 @@ static double GetCpuTemp() // what a fucking NEST this is bro holy shit
         return -1;
     }
     return -1;
-}
+} // seriously though I'll add more support for weird ass boards later
 
 // Whatever the fuck this is
 // FUCK! I CAN'T READ ANY OF THIS SHIT
 static void PerformDiff(string filePath)
 {
-    if (!File.Exists(filePath)) return;
+    if (!File.Exists(filePath)) {
+        Console.WriteLine("\u001b[31m[!]\u001b[0m No snapshots found! Run 'save' at least twice first.");
+        return;
+    }
 
     var lines = File.ReadAllLines(filePath);
     if (lines.Length < 2) {
@@ -103,10 +107,12 @@ static void PerformDiff(string filePath)
 
     var last = JsonSerializer.Deserialize<SystemSnapshot>(lines[^1]);
     var prev = JsonSerializer.Deserialize<SystemSnapshot>(lines[^2]);
-// Calculate percentages SAFELY. It fucking threw out
+// Calculate percentages SAFELY this time. It fucking threw out
 // -∞% and NaN% when testing
 // HOW THE FUCK IS NEGATIVE INFINITY EVEN POSSIBLE
 // I'm tweaking THE DEMONS THE DEMONS THEY'RE AFTER ME
+
+// We truly live in a society.
 double lastUsedPct = last.TotalMemoryMB > 0 
     ? 100 - ((double)last.AvailableMemoryMB / last.TotalMemoryMB * 100) 
     : 0;
