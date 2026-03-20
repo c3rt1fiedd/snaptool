@@ -112,19 +112,22 @@ static void PerformDiff(string filePath)
 
     var last = JsonSerializer.Deserialize<SystemSnapshot>(lines[^1]);
     var prev = JsonSerializer.Deserialize<SystemSnapshot>(lines[^2]);
-// Calculate percentages SAFELY this time. It fucking threw out
-// -∞% and NaN% when testing
-// HOW THE FUCK IS NEGATIVE INFINITY EVEN POSSIBLE
-// I'm tweaking THE DEMONS THE DEMONS THEY'RE AFTER ME
+    // Calculate percentages SAFELY this time. It fucking threw out
+    // -∞% and NaN% when testing
+    // HOW THE FUCK IS NEGATIVE INFINITY EVEN POSSIBLE
+    // I'm tweaking THE DEMONS THE DEMONS THEY'RE AFTER ME
 
-// We truly live in a society.
-double lastUsedPct = last.TotalMemoryMB > 0 
+    // We truly live in a society.
+#pragma warning disable CS8602 // Dereference of a possibly null reference.
+    double lastUsedPct = last.TotalMemoryMB > 0 
     ? 100 - ((double)last.AvailableMemoryMB / last.TotalMemoryMB * 100) 
     : 0;
-
-double prevUsedPct = prev.TotalMemoryMB > 0 
+#pragma warning restore CS8602 // Dereference of a possibly null reference.
+#pragma warning disable CS8602 // Dereference of a possibly null reference.
+    double prevUsedPct = prev.TotalMemoryMB > 0 
     ? 100 - ((double)prev.AvailableMemoryMB / prev.TotalMemoryMB * 100) 
     : 0;
+#pragma warning restore CS8602 // Dereference of a possibly null reference.
 
     // Helper for colors: Green for down (good), Red for up (hot/heavy)
     string Colorize(double diff, bool inverse = false) {
