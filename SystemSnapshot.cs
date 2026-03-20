@@ -1,6 +1,6 @@
 ﻿// Snaptool is a simple CLI tool for Linux that snapshots your processes, RAM, CPU temps and CPU usage.
-// Available on GitHub at <placeholder>
-// Available on the AUR (Arch User Repository) at <placeholder>
+// Available on GitHub at https://github.com/c3rt1fiedd/snaptool
+// Available on the AUR (Arch User Repository) at https://aur.archlinux.org/packages/snaptool/
 using System.Diagnostics;
 using System.Text.Json;
 
