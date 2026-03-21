@@ -56,7 +56,7 @@ try
     }
     else if (args[0] == "-v" || args[0] == "--version" || args[0] == "version")
     {
-        Console.WriteLine("snaptool version 1.2.0");
+        Console.WriteLine("snaptool version 1.3.0");
     }
     else 
     {
