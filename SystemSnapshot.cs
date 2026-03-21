@@ -32,7 +32,7 @@ try
         string singleLineJson = JsonSerializer.Serialize(snapshot); 
         File.AppendAllText(filePath, singleLineJson + Environment.NewLine);
         
-        Console.WriteLine($"Snapshot saved to {filePath}");
+        Console.WriteLine($"A snapshot saved to {filePath}.");
     }
     else if (args[0] == "diff")
     {
@@ -46,13 +46,17 @@ try
             Console.WriteLine("\u001b[32m[✓]\u001b[0m History cleared successfully!");
         }
     }
+    else if (args[0] == "doctor")
+    {
+        PerformDoctor(filePath);
+    }
     else if (args[0] == "-h" || args[0] == "--help" || args[0] == "help")
     {
         PrintHelp();
     }
     else 
     {
-        Console.WriteLine("Usage: snapshotter [save|diff]");
+        Console.WriteLine("Invalid command. Run 'snaptool help' for usage.");
     }
 }
 catch (Exception ex)
@@ -61,11 +65,26 @@ catch (Exception ex)
 }
 
 // --- HELPER METHODS ---
-static double GetCpuUsage() {
-    // Read the file, split by space, take the first number (1-min load avg)
-    string content = File.ReadAllText("/proc/loadavg");
-    string firstPart = content.Split(' ')[0]; 
-    return double.Parse(firstPart);
+static double GetCpuUsage()
+{
+    (long idle1, long total1) = ReadCpuStat();
+    Thread.Sleep(500);
+    (long idle2, long total2) = ReadCpuStat();
+
+    long idleDelta = idle2 - idle1;
+    long totalDelta = total2 - total1;
+
+    return 100.0 * (1.0 - (double)idleDelta / totalDelta);
+}
+
+static (long idle, long total) ReadCpuStat()
+{
+    var parts = File.ReadLines("/proc/stat").First().Split(' ', StringSplitOptions.RemoveEmptyEntries).Skip(1).Select(long.Parse).ToArray();
+
+    long idle = parts[3];
+    long total = parts.Sum();
+
+    return (idle, total);
 }
 
 static double GetCpuTemp() // what a fucking NEST this is bro holy shit
@@ -97,37 +116,40 @@ static double GetCpuTemp() // what a fucking NEST this is bro holy shit
 
 // Whatever the fuck this is
 // FUCK! I CAN'T READ ANY OF THIS SHIT
-static void PerformDiff(string filePath)
+static void PerformDiff(string filePath) // This is actually so messy bro it's a crime
 {
     if (!File.Exists(filePath)) {
-        Console.WriteLine("\u001b[31m[!]\u001b[0m No snapshots found! Run 'save' at least twice first.");
+        Console.WriteLine("\u001b[31m[!]\u001b[0m No snapshots found!");
         return;
     }
 
     var lines = File.ReadAllLines(filePath);
     if (lines.Length < 2) {
-        Console.WriteLine("\u001b[31m[!]\u001b[0m Run 'save' at least twice first.");
+        Console.WriteLine("\u001b[31m[!]\u001b[0m Not enough snapshots to commpare! Run 'save' at least twice first.");
         return;
     }
-
-    var last = JsonSerializer.Deserialize<SystemSnapshot>(lines[^1]);
-    var prev = JsonSerializer.Deserialize<SystemSnapshot>(lines[^2]);
+    // TODO: add null handlings idfk bro how could the JSON ever get corrupted,
+    // that's a gigantic skill issue
+    var last = JsonSerializer.Deserialize<SystemSnapshot>(lines[^1]); // Last line
+    if (last == null) {
+        throw new Exception("Corrupted snapshot data. You might want to clear your history with 'snaptool clear' and start fresh.");
+    }
+    var prev = JsonSerializer.Deserialize<SystemSnapshot>(lines[^2]); // Second to last line
+    if (prev == null) {
+        throw new Exception("Corrupted snapshot data. You might want to clear your history with 'snaptool clear' and start fresh.");
+    }
     // Calculate percentages SAFELY this time. It fucking threw out
     // -∞% and NaN% when testing
     // HOW THE FUCK IS NEGATIVE INFINITY EVEN POSSIBLE
     // I'm tweaking THE DEMONS THE DEMONS THEY'RE AFTER ME
 
     // We truly live in a society.
-#pragma warning disable CS8602 // Dereference of a possibly null reference.
     double lastUsedPct = last.TotalMemoryMB > 0 
     ? 100 - ((double)last.AvailableMemoryMB / last.TotalMemoryMB * 100) 
     : 0;
-#pragma warning restore CS8602 // Dereference of a possibly null reference.
-#pragma warning disable CS8602 // Dereference of a possibly null reference.
     double prevUsedPct = prev.TotalMemoryMB > 0 
     ? 100 - ((double)prev.AvailableMemoryMB / prev.TotalMemoryMB * 100) 
     : 0;
-#pragma warning restore CS8602 // Dereference of a possibly null reference.
 
     // Helper for colors: Green for down (good), Red for up (hot/heavy)
     string Colorize(double diff, bool inverse = false) {
@@ -159,17 +181,71 @@ static long GetMeminfoValue(string key) {
     return long.Parse(parts[1]) / 1024; // Convert KB to MB
 }
 
-// What --help actually prints
+// What "help" actually prints
 static void PrintHelp()
 {
-    Console.WriteLine("\n\u001b[1mSnaptool - A Minimal System Delta Tracker\u001b[0m");
-    Console.WriteLine("Usage: snapshotter [command]");
+    Console.WriteLine("\n\u001b[1mSnaptool - A Minimal System Delta Tracker\u001b[0m"); // Minimal? Are we deadass? Do you
+    // KNOW how much fucking
+    // time I spent doing complex math instead of sleeping?? Bitch I could've made a fucking game in the time I spent
+    // on this bitchy ass bullshit bro fuck
+    Console.WriteLine("Usage: snaptool [command]");
     Console.WriteLine("\nCommands:");
     Console.WriteLine("  save    - Capture current CPU temp, load and memory usage.");
     Console.WriteLine("  diff    - Compare the last two snapshots and show changes.");
+    Console.WriteLine("  doctor  - Analyze recent snapshots for system health issues.");
     Console.WriteLine("  help    - Show this help message.");
     Console.WriteLine("  clear   - Clear all saved snapshots.");
-    Console.WriteLine("\nStorage: ~/.local/share/snapshotter/history.jsonl\n");
+    Console.WriteLine("\nSnapshots get stored at ~/.local/share/snapshotter/history.jsonl\n");
+}
+
+static void PerformDoctor(string filePath)
+{
+    if (!File.Exists(filePath)) {
+        Console.WriteLine("\u001b[31m[!]\u001b[0m No history found. Run 'save' a few times first.");
+        return;
+    }
+
+    var lines = File.ReadAllLines(filePath).TakeLast(5).ToList();
+    if (lines.Count < 3) {
+        Console.WriteLine("\u001b[33m[!]\u001b[0m Need at least 3 snapshots for a diagnosis.");
+        return;
+    }
+
+    var snapshots = lines.Select(l => JsonSerializer.Deserialize<SystemSnapshot>(l)).Where(s => s != null).ToList();
+    
+    Console.WriteLine("\u001b[1m--- Snaptool Doctor ---\u001b[0m\n");
+
+    bool isWarning = false;
+
+    // 1. Temperature Trend
+    double lastTemp = snapshots[^1]!.CpuTemp;
+    bool tempRising = snapshots[^1]!.CpuTemp > snapshots[^2]!.CpuTemp && snapshots[^2]!.CpuTemp > snapshots[^3]!.CpuTemp;
+    if (tempRising) {
+        Console.WriteLine($"[\u001b[33m!\u001b[0m] CPU temperature is rising ({snapshots[^3]!.CpuTemp}°C → {snapshots[^2]!.CpuTemp}°C → {lastTemp}°C)");
+        isWarning = true;
+    } else {
+        Console.WriteLine($"[\u001b[32m✓\u001b[0m] CPU temperature is stable ({lastTemp}°C)");
+    }
+
+    // 2. Memory Leak Detection (Steady increase in % used)
+    var memUsages = snapshots.Select(s => 100 - ((double)s!.AvailableMemoryMB / s!.TotalMemoryMB * 100)).ToList();
+    bool memLeak = memUsages[^1] > memUsages[^2] && memUsages[^2] > memUsages[^3];
+    if (memLeak) {
+        Console.WriteLine($"[\u001b[31m!\u001b[0m] Possible memory leak detected (steady increase to {Math.Round(memUsages[^1], 1)}%)");
+        isWarning = true;
+    } else {
+        Console.WriteLine($"[\u001b[32m✓\u001b[0m] Memory usage normal ({Math.Round(memUsages[^1], 1)}%)");
+    }
+
+    // 3. Top Process Analysis
+    var topProc = snapshots[^1]!.TopProcesses.FirstOrDefault() ?? "Unknown";
+    Console.WriteLine("\nTop Process:");
+    Console.WriteLine($"[\u001b[36m*\u001b[0m] {topProc} is currently the heaviest process.");
+
+    // Final Status
+    Console.WriteLine("\n-----------------------");
+    string status = isWarning ? "\u001b[31mWARNING\u001b[0m" : "\u001b[32mHEALTHY\u001b[0m";
+    Console.WriteLine($"Overall Status: {status}");
 }
 
 // --- TYPE DECLARATIONS (Must come last) ---
