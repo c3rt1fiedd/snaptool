@@ -13,7 +13,7 @@ string filePath = Path.Combine(dataDir, "history.jsonl");
 // Handle the arguments
 try 
 {
-    if (args.Length == 0 || args[0] == "save")
+    if (args.Length == 0 || string.IsNullOrWhiteSpace(args[0]) || args[0] == "save")
     {
         // Define the snapshot INSIDE here because we only gather data on 'save'
         var snapshot = new SystemSnapshot {
@@ -53,6 +53,10 @@ try
     else if (args[0] == "-h" || args[0] == "--help" || args[0] == "help")
     {
         PrintHelp();
+    }
+    else if (args[0] == "-v" || args[0] == "--version" || args[0] == "version")
+    {
+        Console.WriteLine("snaptool version 1.2.0");
     }
     else 
     {
