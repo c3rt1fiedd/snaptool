@@ -13,7 +13,7 @@ string filePath = Path.Combine(dataDir, "history.jsonl");
 // Handle the arguments
 try 
 {
-    if (args.Length == 0 || string.IsNullOrWhiteSpace(args[0]) || args[0] == "save")
+    if (args.Length == 0 || string.IsNullOrWhiteSpace(args[0]) || args[0] == "save") // Snapshot command
     {
         // Define the snapshot INSIDE here because we only gather data on 'save'
         var snapshot = new SystemSnapshot {
@@ -34,11 +34,11 @@ try
         
         Console.WriteLine($"A snapshot saved to {filePath}.");
     }
-    else if (args[0] == "diff")
+    else if (args[0] == "diff") // Diff command
     {
         PerformDiff(filePath);
     }
-    else if (args[0] == "clear")
+    else if (args[0] == "clear") // Clear command
     {
         if (File.Exists(filePath))
         {
@@ -46,21 +46,21 @@ try
             Console.WriteLine("\u001b[32m[✓]\u001b[0m History cleared successfully!");
         }
     }
-    else if (args[0] == "doctor")
+    else if (args[0] == "doctor") // Diagnostic command
     {
         PerformDoctor(filePath);
     }
-    else if (args[0] == "-h" || args[0] == "--help" || args[0] == "help")
+    else if (args[0] == "-h" || args[0] == "--help" || args[0] == "help") // Help command
     {
         PrintHelp();
     }
-    else if (args[0] == "-v" || args[0] == "--version" || args[0] == "version")
+    else if (args[0] == "-v" || args[0] == "--version" || args[0] == "version") // Version command
     {
         Console.WriteLine("snaptool version 1.3.0");
     }
     else 
     {
-        Console.WriteLine("Invalid command. Run 'snaptool help' for usage.");
+        Console.WriteLine("Invalid command. Run 'snaptool help' for usage."); // Invalid command handling
     }
 }
 catch (Exception ex)
@@ -69,7 +69,7 @@ catch (Exception ex)
 }
 
 // --- HELPER METHODS ---
-static double GetCpuUsage()
+static double GetCpuUsage() // Get CPU usage by reading /proc/stat twice and calculating the difference
 {
     (long idle1, long total1) = ReadCpuStat();
     Thread.Sleep(500);
@@ -78,7 +78,16 @@ static double GetCpuUsage()
     long idleDelta = idle2 - idle1;
     long totalDelta = total2 - total1;
 
-    return 100.0 * (1.0 - (double)idleDelta / totalDelta);
+    if (totalDelta <= 0 || idleDelta < 0)
+    {
+        return 0.0; // protects against race conditions or bad /proc/stat data
+    }
+
+    double usage = 100.0 * (1.0 - (double)idleDelta / totalDelta);
+    usage = Math.Clamp(usage, 0.0, 100.0);
+
+    // Round to 1 decimal place, or change to Math.Ceiling(usage) if you prefer 'round up'.
+    return Math.Round(usage, 1, MidpointRounding.AwayFromZero);
 }
 
 static (long idle, long total) ReadCpuStat()
@@ -91,7 +100,9 @@ static (long idle, long total) ReadCpuStat()
     return (idle, total);
 }
 
-static double GetCpuTemp() // what a fucking NEST this is bro holy shit
+static double GetCpuTemp() // Get CPU temperature by reading hardware sensor files
+// what a fucking NEST this is
+// Ts is a nightmare I have to handle so many HW configs fuckin hell
 {
     try
     {
@@ -101,9 +112,10 @@ static double GetCpuTemp() // what a fucking NEST this is bro holy shit
             string name = File.ReadAllText(Path.Combine(dir, "name")).Trim();
 
             // coretemp is for Intel, k10temp is AMD
+            // may not work on all boards
             if (name == "coretemp" || name == "k10temp")
             {
-                // temp1_input is usually the package temparature
+                // temp1_input is USUALLY the package temparature
                 string tempRaw = File.ReadAllText(Path.Combine(dir, "temp1_input")).Trim();
                 return double.Parse(tempRaw) / 1000.0;
             }
@@ -132,7 +144,7 @@ static void PerformDiff(string filePath) // This is actually so messy bro it's a
         Console.WriteLine("\u001b[31m[!]\u001b[0m Not enough snapshots to commpare! Run 'save' at least twice first.");
         return;
     }
-    // TODO: add null handlings idfk bro how could the JSON ever get corrupted,
+    // bro how could the JSON ever get corrupted,
     // that's a gigantic skill issue
     var last = JsonSerializer.Deserialize<SystemSnapshot>(lines[^1]); // Last line
     if (last == null) {
@@ -156,6 +168,8 @@ static void PerformDiff(string filePath) // This is actually so messy bro it's a
     : 0;
 
     // Helper for colors: Green for down (good), Red for up (hot/heavy)
+    // so self explanatory I should wipe that comment off the face of the Earth
+    // HJFod says hi! ( ͡° ͜ʖ ͡°)
     string Colorize(double diff, bool inverse = false) {
         bool isBad = inverse ? diff < 0 : diff > 0; 
         string color = isBad ? "\u001b[31m" : "\u001b[32m"; // Red vs Green
@@ -192,6 +206,7 @@ static void PrintHelp()
     // KNOW how much fucking
     // time I spent doing complex math instead of sleeping?? Bitch I could've made a fucking game in the time I spent
     // on this bitchy ass bullshit bro fuck
+    
     Console.WriteLine("Usage: snaptool [command]");
     Console.WriteLine("\nCommands:");
     Console.WriteLine("  save    - Capture current CPU temp, load and memory usage.");
