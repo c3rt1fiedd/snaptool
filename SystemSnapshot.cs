@@ -56,7 +56,7 @@ try
     }
     else if (args[0] == "-v" || args[0] == "--version" || args[0] == "version") // Version command
     {
-        Console.WriteLine("snaptool version 1.3.0");
+        Console.WriteLine("snaptool version 1.3.1");
     }
     else 
     {
@@ -86,8 +86,8 @@ static double GetCpuUsage() // Get CPU usage by reading /proc/stat twice and cal
     double usage = 100.0 * (1.0 - (double)idleDelta / totalDelta);
     usage = Math.Clamp(usage, 0.0, 100.0);
 
-    // Round to 1 decimal place, or change to Math.Ceiling(usage) if you prefer 'round up'.
-    return Math.Round(usage, 1, MidpointRounding.AwayFromZero);
+    // Round to 1 decimal place
+    return Math.Ceiling(usage * 10) / 10;
 }
 
 static (long idle, long total) ReadCpuStat()
@@ -180,9 +180,9 @@ static void PerformDiff(string filePath) // This is actually so messy bro it's a
     Console.WriteLine($"{"Metric",-10} | {"Current",-10} | {"Change",-10}");
     Console.WriteLine(new string('-', 35));
     
-    Console.WriteLine($"{"Temp",-10} | {last.CpuTemp + "°C",-10} | {Colorize(last.CpuTemp - prev.CpuTemp)}°C");
-    Console.WriteLine($"{"CPU",-10} | {last.CpuUsage + "%",-10} | {Colorize(last.CpuUsage - prev.CpuUsage)}%");
-    Console.WriteLine($"{"Mem",-10} | {Math.Round(lastUsedPct, 1)}% Used  | {Colorize(lastUsedPct - prevUsedPct, true)}%");
+    Console.WriteLine($"{"CPU Temp",-10} | {last.CpuTemp + "°C",-10} | {Colorize(last.CpuTemp - prev.CpuTemp)}°C");
+    Console.WriteLine($"{"CPU Usage",-10} | {last.CpuUsage + "%",-10} | {Colorize(last.CpuUsage - prev.CpuUsage)}%");
+    Console.WriteLine($"{"Memory",-10} | {Math.Round(lastUsedPct, 1)}% Used  | {Colorize(lastUsedPct - prevUsedPct, true)}%");
     Console.WriteLine();
 }
 
@@ -275,5 +275,5 @@ public class SystemSnapshot
     public double CpuTemp { get; set; } // CPU temps
     public long AvailableMemoryMB { get; set; } // Total RAM
     public long TotalMemoryMB { get; set; } // Available RAM (yes they're swapped for.. whatever reason stfu)
-    public List<string> TopProcesses { get; set; } = new();
+    public List<string> TopProcesses { get; set; } = new(); // Top processes
 }
