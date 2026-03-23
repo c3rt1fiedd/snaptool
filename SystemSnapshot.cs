@@ -13,7 +13,11 @@ string filePath = Path.Combine(dataDir, "history.jsonl");
 // Handle the arguments
 try 
 {
-    if (args[0] == "save") // Snapshot command
+    if (args.Length == 0) // No arguments provided
+    {
+        Console.WriteLine("No command provided. Run 'snaptool help' for usage.");
+    }
+    else if (args[0] == "save") // Snapshot command
     {
         // Define the snapshot INSIDE here because we only gather data on 'save'
         var snapshot = new SystemSnapshot {
@@ -50,7 +54,7 @@ try
     {
         PerformDoctor(filePath);
     }
-    else if (args[0] == "-h" || args[0] == "--help" || args[0] == "help" || args.Length == 0) // Help command
+    else if (args[0] == "-h" || args[0] == "--help" || args[0] == "help") // Help command
     {
         PrintHelp();
     }
